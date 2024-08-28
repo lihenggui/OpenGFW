@@ -246,7 +246,7 @@ func (s *udpStream) closeActiveEntries() {
 	// Signal close to all active entries & move them to doneEntries
 	updated := false
 	for _, entry := range s.activeEntries {
-		update := entry.Stream.Close(false)
+		update, _ := entry.Stream.Close(false)
 		up := processPropUpdate(s.info.Props, entry.Name, update)
 		updated = updated || up
 	}
@@ -258,12 +258,14 @@ func (s *udpStream) closeActiveEntries() {
 }
 
 func (s *udpStream) feedEntry(entry *udpStreamEntry, rev bool, data []byte) (update *analyzer.PropUpdate, closeUpdate *analyzer.PropUpdate, done bool) {
-	update, done = entry.Stream.Feed(rev, data)
+	result, _ := entry.Stream.Feed(rev, data)
+	update = result.Update
+	done = result.Done
 	if entry.HasLimit {
 		entry.Quota -= len(data)
 		if entry.Quota <= 0 {
 			// Quota exhausted, signal close & move to doneEntries
-			closeUpdate = entry.Stream.Close(true)
+			closeUpdate, _ = entry.Stream.Close(true)
 			done = true
 		}
 	}

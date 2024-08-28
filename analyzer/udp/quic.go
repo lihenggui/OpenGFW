@@ -35,7 +35,7 @@ type quicStream struct {
 	invalidCount int
 }
 
-func (s *quicStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *quicStream) Feed(rev bool, data []byte) (*analyzer.FeedResult, error) {
 	// minimal data size: protocol version (2 bytes) + random (32 bytes) +
 	//   + session ID (1 byte) + cipher suites (4 bytes) +
 	//   + compression methods (2 bytes) + no extensions
@@ -44,38 +44,41 @@ func (s *quicStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, done b
 	if rev {
 		// We don't support server direction for now
 		s.invalidCount++
-		return nil, s.invalidCount >= quicInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= quicInvalidCountThreshold}, nil
 	}
 
 	pl, err := quic.ReadCryptoPayload(data)
 	if err != nil || len(pl) < 4 { // FIXME: isn't length checked inside quic.ReadCryptoPayload? Also, what about error handling?
 		s.invalidCount++
-		return nil, s.invalidCount >= quicInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= quicInvalidCountThreshold}, nil
 	}
 
 	if pl[0] != internal.TypeClientHello {
 		s.invalidCount++
-		return nil, s.invalidCount >= quicInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= quicInvalidCountThreshold}, nil
 	}
 
 	chLen := int(pl[1])<<16 | int(pl[2])<<8 | int(pl[3])
 	if chLen < minDataSize {
 		s.invalidCount++
-		return nil, s.invalidCount >= quicInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= quicInvalidCountThreshold}, nil
 	}
 
 	m := internal.ParseTLSClientHelloMsgData(&utils.ByteBuffer{Buf: pl[4:]})
 	if m == nil {
 		s.invalidCount++
-		return nil, s.invalidCount >= quicInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= quicInvalidCountThreshold}, nil
 	}
 
-	return &analyzer.PropUpdate{
-		Type: analyzer.PropUpdateMerge,
-		M:    analyzer.PropMap{"req": m},
-	}, true
+	return &analyzer.FeedResult{
+		Update: &analyzer.PropUpdate{
+			Type: analyzer.PropUpdateMerge,
+			M:    analyzer.PropMap{"req": m},
+		},
+		Done: true,
+	}, nil
 }
 
-func (s *quicStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (s *quicStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }

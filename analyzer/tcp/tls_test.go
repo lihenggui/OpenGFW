@@ -36,8 +36,12 @@ func TestTlsStreamParsing_ClientHello(t *testing.T) {
 	}
 
 	s := newTLSStream(nil)
-	u, _ := s.Feed(false, false, false, 0, clientHello)
-	got := u.M.Get("req")
+	result, _ := s.Feed(false, false, false, 0, clientHello)
+	if result == nil || result.Update == nil {
+		t.Errorf("Feed returned nil result or nil update for ClientHello")
+		return
+	}
+	got := result.Update.M.Get("req")
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("%d B parsed = %v, want %v", len(clientHello), got, want)
 	}
@@ -61,8 +65,12 @@ func TestTlsStreamParsing_ServerHello(t *testing.T) {
 	}
 
 	s := newTLSStream(nil)
-	u, _ := s.Feed(true, false, false, 0, serverHello)
-	got := u.M.Get("resp")
+	result, _ := s.Feed(true, false, false, 0, serverHello)
+	if result == nil || result.Update == nil {
+		t.Errorf("Feed returned nil result or nil update for ServerHello")
+		return
+	}
+	got := result.Update.M.Get("resp")
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("%d B parsed = %v, want %v", len(serverHello), got, want)
 	}

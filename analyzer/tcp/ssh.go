@@ -50,12 +50,12 @@ func newSSHStream(logger analyzer.Logger) *sshStream {
 	return s
 }
 
-func (s *sshStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *sshStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -82,7 +82,7 @@ func (s *sshStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyz
 			s.clientUpdated = false
 		}
 	}
-	return update, cancelled || (s.clientDone && s.serverDone)
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (s.clientDone && s.serverDone)}, nil
 }
 
 // parseExchangeLine parses the SSH Protocol Version Exchange string.
@@ -138,10 +138,10 @@ func (s *sshStream) parseServerExchangeLine() utils.LSMAction {
 	return action
 }
 
-func (s *sshStream) Close(limited bool) *analyzer.PropUpdate {
+func (s *sshStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	s.clientBuf.Reset()
 	s.serverBuf.Reset()
 	s.clientMap = nil
 	s.serverMap = nil
-	return nil
+	return nil, nil
 }

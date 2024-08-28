@@ -29,8 +29,12 @@ func TestHTTPParsing_Request(t *testing.T) {
 			tc, want := tc, want
 			t.Parallel()
 
-			u, _ := newHTTPStream(nil).Feed(false, false, false, 0, []byte(tc))
-			got := u.M.Get("req")
+			result, _ := newHTTPStream(nil).Feed(false, false, false, 0, []byte(tc))
+			if result == nil || result.Update == nil {
+				t.Errorf("Feed returned nil result or nil update for \"%s\"", tc)
+				return
+			}
+			got := result.Update.M.Get("req")
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("\"%s\" parsed = %v, want %v", tc, got, want)
 			}
@@ -54,8 +58,12 @@ func TestHTTPParsing_Response(t *testing.T) {
 			tc, want := tc, want
 			t.Parallel()
 
-			u, _ := newHTTPStream(nil).Feed(true, false, false, 0, []byte(tc))
-			got := u.M.Get("resp")
+			result, _ := newHTTPStream(nil).Feed(true, false, false, 0, []byte(tc))
+			if result == nil || result.Update == nil {
+				t.Errorf("Feed returned nil result or nil update for \"%s\"", tc)
+				return
+			}
+			got := result.Update.M.Get("resp")
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("\"%s\" parsed = %v, want %v", tc, got, want)
 			}

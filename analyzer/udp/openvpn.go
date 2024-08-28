@@ -194,9 +194,9 @@ func newOpenVPNUDPStream(logger analyzer.Logger) *openvpnUDPStream {
 	return s
 }
 
-func (o *openvpnUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, d bool) {
+func (o *openvpnUDPStream) Feed(rev bool, data []byte) (*analyzer.FeedResult, error) {
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -223,15 +223,15 @@ func (o *openvpnUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, 
 		}
 	}
 
-	return update, cancelled || (o.reqDone && o.respDone) || o.rxPktCnt+o.txPktCnt > o.pktLimit
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (o.reqDone && o.respDone) || o.rxPktCnt+o.txPktCnt > o.pktLimit}, nil
 }
 
-func (o *openvpnUDPStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (o *openvpnUDPStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }
 
 // Parse OpenVPN UDP packet.
-func (o *openvpnUDPStream) parsePkt() (p *openvpnPkt, action utils.LSMAction) {
+func (o *openvpnUDPStream) parsePkt() (*openvpnPkt, utils.LSMAction) {
 	if o.curPkt == nil {
 		return nil, utils.LSMActionPause
 	}
@@ -241,7 +241,7 @@ func (o *openvpnUDPStream) parsePkt() (p *openvpnPkt, action utils.LSMAction) {
 	}
 
 	// Parse packet header
-	p = &openvpnPkt{}
+	p := &openvpnPkt{}
 	p.opcode = o.curPkt[0] >> 3
 	p._keyId = o.curPkt[0] & 0x07
 
@@ -281,12 +281,12 @@ func newOpenVPNTCPStream(logger analyzer.Logger) *openvpnTCPStream {
 	return s
 }
 
-func (o *openvpnTCPStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, d bool) {
+func (o *openvpnTCPStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -314,17 +314,17 @@ func (o *openvpnTCPStream) Feed(rev, start, end bool, skip int, data []byte) (u 
 		}
 	}
 
-	return update, cancelled || (o.reqDone && o.respDone) || o.rxPktCnt+o.txPktCnt > o.pktLimit
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (o.reqDone && o.respDone) || o.rxPktCnt+o.txPktCnt > o.pktLimit}, nil
 }
 
-func (o *openvpnTCPStream) Close(limited bool) *analyzer.PropUpdate {
+func (o *openvpnTCPStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	o.reqBuf.Reset()
 	o.respBuf.Reset()
-	return nil
+	return nil, nil
 }
 
 // Parse OpenVPN TCP packet.
-func (o *openvpnTCPStream) parsePkt(rev bool) (p *openvpnPkt, action utils.LSMAction) {
+func (o *openvpnTCPStream) parsePkt(rev bool) (*openvpnPkt, utils.LSMAction) {
 	var buffer *utils.ByteBuffer
 	if rev {
 		buffer = o.respBuf
@@ -357,7 +357,7 @@ func (o *openvpnTCPStream) parsePkt(rev bool) (p *openvpnPkt, action utils.LSMAc
 	pkt = pkt[2:]
 
 	// Parse packet header
-	p = &openvpnPkt{}
+	p := &openvpnPkt{}
 	p.pktLen = pktLen
 	p.opcode = pkt[0] >> 3
 	p._keyId = pkt[0] & 0x07

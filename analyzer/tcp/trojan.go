@@ -45,12 +45,12 @@ func newTrojanStream(logger analyzer.Logger) *trojanStream {
 	return &trojanStream{logger: logger}
 }
 
-func (s *trojanStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *trojanStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 
 	if s.first {
@@ -58,7 +58,7 @@ func (s *trojanStream) Feed(rev, start, end bool, skip int, data []byte) (u *ana
 		// Stop if it's not a valid TLS connection
 		if !(!rev && len(data) >= 3 && data[0] >= 0x16 && data[0] <= 0x17 &&
 			data[1] == 0x03 && data[2] <= 0x09) {
-			return nil, true
+			return &analyzer.FeedResult{Update: nil, Done: true}, nil
 		}
 	}
 
@@ -75,24 +75,27 @@ func (s *trojanStream) Feed(rev, start, end bool, skip int, data []byte) (u *ana
 			// Different direction, bump the index
 			s.seqIndex += 1
 			if s.seqIndex == 4 {
-				return &analyzer.PropUpdate{
-					Type: analyzer.PropUpdateReplace,
-					M: analyzer.PropMap{
-						"seq": s.seq,
-						"yes": isTrojanSeq(s.seq),
+				return &analyzer.FeedResult{
+					Update: &analyzer.PropUpdate{
+						Type: analyzer.PropUpdateReplace,
+						M: analyzer.PropMap{
+							"seq": s.seq,
+							"yes": isTrojanSeq(s.seq),
+						},
 					},
-				}, true
+					Done: true,
+				}, nil
 			}
 			s.seq[s.seqIndex] += len(data)
 			s.rev = rev
 		}
 	}
 
-	return nil, false
+	return &analyzer.FeedResult{Update: nil, Done: false}, nil
 }
 
-func (s *trojanStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (s *trojanStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }
 
 func isTrojanSeq(seq [4]int) bool {

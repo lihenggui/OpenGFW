@@ -176,7 +176,7 @@ func (s *tcpStream) closeActiveEntries() {
 	// Signal close to all active entries & move them to doneEntries
 	updated := false
 	for _, entry := range s.activeEntries {
-		update := entry.Stream.Close(false)
+		update, _ := entry.Stream.Close(false)
 		up := processPropUpdate(s.info.Props, entry.Name, update)
 		updated = updated || up
 	}
@@ -189,17 +189,24 @@ func (s *tcpStream) closeActiveEntries() {
 
 func (s *tcpStream) feedEntry(entry *tcpStreamEntry, rev, start, end bool, skip int, data []byte) (update *analyzer.PropUpdate, closeUpdate *analyzer.PropUpdate, done bool) {
 	if !entry.HasLimit {
-		update, done = entry.Stream.Feed(rev, start, end, skip, data)
+		result, _ := entry.Stream.Feed(rev, start, end, skip, data)
+		update = result.Update
+		done = result.Done
 	} else {
 		qData := data
 		if len(qData) > entry.Quota {
 			qData = qData[:entry.Quota]
 		}
-		update, done = entry.Stream.Feed(rev, start, end, skip, qData)
+		result, _ := entry.Stream.Feed(rev, start, end, skip, qData)
+		update = result.Update
+		done = result.Done
 		entry.Quota -= len(qData)
 		if entry.Quota <= 0 {
 			// Quota exhausted, signal close & move to doneEntries
-			closeUpdate = entry.Stream.Close(true)
+			_, err := entry.Stream.Close(true)
+			if err != nil {
+				return nil, nil, false
+			}
 			done = true
 		}
 	}

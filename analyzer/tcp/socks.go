@@ -94,12 +94,12 @@ func newSocksStream(logger analyzer.Logger) *socksStream {
 	return s
 }
 
-func (s *socksStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, d bool) {
+func (s *socksStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -130,15 +130,15 @@ func (s *socksStream) Feed(rev, start, end bool, skip int, data []byte) (u *anal
 		}
 	}
 
-	return update, cancelled || (s.reqDone && s.respDone)
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (s.reqDone && s.respDone)}, nil
 }
 
-func (s *socksStream) Close(limited bool) *analyzer.PropUpdate {
+func (s *socksStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	s.reqBuf.Reset()
 	s.respBuf.Reset()
 	s.reqMap = nil
 	s.respMap = nil
-	return nil
+	return nil, nil
 }
 
 func (s *socksStream) parseSocksReqVersion() utils.LSMAction {

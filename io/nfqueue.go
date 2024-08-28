@@ -28,6 +28,7 @@ const (
 
 	nftFamily = "inet"
 	nftTable  = "opengfw"
+	SO_MARK   = 36
 )
 
 func generateNftRules(local, rst bool) (*nftTableSpec, error) {
@@ -165,7 +166,7 @@ func NewNFQueuePacketIO(config NFQueuePacketIOConfig) (PacketIO, error) {
 			Control: func(network, address string, c syscall.RawConn) error {
 				var err error
 				cErr := c.Control(func(fd uintptr) {
-					err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_MARK, nfqueueConnMarkAccept)
+					err = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, SO_MARK, nfqueueConnMarkAccept)
 				})
 				if cErr != nil {
 					return cErr

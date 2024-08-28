@@ -31,12 +31,12 @@ func newFETStream(logger analyzer.Logger) *fetStream {
 	return &fetStream{logger: logger}
 }
 
-func (s *fetStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *fetStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	ex1 := averagePopCount(data)
 	ex2 := isFirstSixPrintable(data)
@@ -44,21 +44,24 @@ func (s *fetStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyz
 	ex4 := contiguousPrintable(data)
 	ex5 := isTLSorHTTP(data)
 	exempt := (ex1 <= 3.4 || ex1 >= 4.6) || ex2 || ex3 > 0.5 || ex4 > 20 || ex5
-	return &analyzer.PropUpdate{
-		Type: analyzer.PropUpdateReplace,
-		M: analyzer.PropMap{
-			"ex1": ex1,
-			"ex2": ex2,
-			"ex3": ex3,
-			"ex4": ex4,
-			"ex5": ex5,
-			"yes": !exempt,
+	return &analyzer.FeedResult{
+		Update: &analyzer.PropUpdate{
+			Type: analyzer.PropUpdateReplace,
+			M: analyzer.PropMap{
+				"ex1": ex1,
+				"ex2": ex2,
+				"ex3": ex3,
+				"ex4": ex4,
+				"ex5": ex5,
+				"yes": !exempt,
+			},
 		},
-	}, true
+		Done: true,
+	}, nil
 }
 
-func (s *fetStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (s *fetStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }
 
 func popCount(b byte) int {

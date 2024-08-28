@@ -54,12 +54,12 @@ func newHTTPStream(logger analyzer.Logger) *httpStream {
 	return s
 }
 
-func (s *httpStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, d bool) {
+func (s *httpStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -86,7 +86,7 @@ func (s *httpStream) Feed(rev, start, end bool, skip int, data []byte) (u *analy
 			s.reqUpdated = false
 		}
 	}
-	return update, cancelled || (s.reqDone && s.respDone)
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (s.reqDone && s.respDone)}, nil
 }
 
 func (s *httpStream) parseRequestLine() utils.LSMAction {
@@ -184,10 +184,10 @@ func (s *httpStream) parseResponseHeaders() utils.LSMAction {
 	return action
 }
 
-func (s *httpStream) Close(limited bool) *analyzer.PropUpdate {
+func (s *httpStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	s.reqBuf.Reset()
 	s.respBuf.Reset()
 	s.reqMap = nil
 	s.respMap = nil
-	return nil
+	return nil, nil
 }

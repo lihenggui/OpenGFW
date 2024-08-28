@@ -50,8 +50,8 @@ func TestQuicStreamParsing_ClientHello(t *testing.T) {
 	}
 
 	s := quicStream{}
-	u, _ := s.Feed(false, clientHello)
-	got := u.M.Get("req")
+	result, _ := s.Feed(false, clientHello)
+	got := result.Update.M.Get("req")
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("%d B parsed = %v, want %v", len(clientHello), got, want)
 	}

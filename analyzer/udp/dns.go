@@ -52,7 +52,7 @@ type dnsUDPStream struct {
 	invalidCount int
 }
 
-func (s *dnsUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *dnsUDPStream) Feed(rev bool, data []byte) (*analyzer.FeedResult, error) {
 	m := parseDNSMessage(data)
 	// To allow non-DNS UDP traffic to get offloaded,
 	// we consider a UDP stream invalid and "done" if
@@ -60,17 +60,20 @@ func (s *dnsUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, done
 	// packets that are not valid DNS messages.
 	if m == nil {
 		s.invalidCount++
-		return nil, s.invalidCount >= dnsUDPInvalidCountThreshold
+		return &analyzer.FeedResult{Update: nil, Done: s.invalidCount >= dnsUDPInvalidCountThreshold}, nil
 	}
 	s.invalidCount = 0 // Reset invalid count on valid DNS message
-	return &analyzer.PropUpdate{
-		Type: analyzer.PropUpdateReplace,
-		M:    m,
-	}, false
+	return &analyzer.FeedResult{
+		Update: &analyzer.PropUpdate{
+			Type: analyzer.PropUpdateReplace,
+			M:    m,
+		},
+		Done: false,
+	}, nil
 }
 
-func (s *dnsUDPStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (s *dnsUDPStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }
 
 type dnsTCPStream struct {
@@ -92,12 +95,12 @@ type dnsTCPStream struct {
 	respMsgLen int
 }
 
-func (s *dnsTCPStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *dnsTCPStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -124,15 +127,15 @@ func (s *dnsTCPStream) Feed(rev, start, end bool, skip int, data []byte) (u *ana
 			s.reqUpdated = false
 		}
 	}
-	return update, cancelled || (s.reqDone && s.respDone)
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (s.reqDone && s.respDone)}, nil
 }
 
-func (s *dnsTCPStream) Close(limited bool) *analyzer.PropUpdate {
+func (s *dnsTCPStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	s.reqBuf.Reset()
 	s.respBuf.Reset()
 	s.reqMap = nil
 	s.respMap = nil
-	return nil
+	return nil, nil
 }
 
 func (s *dnsTCPStream) getReqMessageLength() utils.LSMAction {

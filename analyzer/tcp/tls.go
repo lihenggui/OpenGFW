@@ -54,12 +54,12 @@ func newTLSStream(logger analyzer.Logger) *tlsStream {
 	return s
 }
 
-func (s *tlsStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *tlsStream) Feed(rev, start, end bool, skip int, data []byte) (*analyzer.FeedResult, error) {
 	if skip != 0 {
-		return nil, true
+		return &analyzer.FeedResult{Update: nil, Done: true}, nil
 	}
 	if len(data) == 0 {
-		return nil, false
+		return &analyzer.FeedResult{Update: nil, Done: false}, nil
 	}
 	var update *analyzer.PropUpdate
 	var cancelled bool
@@ -86,7 +86,7 @@ func (s *tlsStream) Feed(rev, start, end bool, skip int, data []byte) (u *analyz
 			s.reqUpdated = false
 		}
 	}
-	return update, cancelled || (s.reqDone && s.respDone)
+	return &analyzer.FeedResult{Update: update, Done: cancelled || (s.reqDone && s.respDone)}, nil
 }
 
 // tlsClientHelloPreprocess validates ClientHello message.
@@ -138,13 +138,13 @@ func (s *tlsStream) tlsClientHelloPreprocess() utils.LSMAction {
 // During validation, message header and first handshake header may be removed
 // from `s.reqBuf`.
 func (s *tlsStream) tlsServerHelloPreprocess() utils.LSMAction {
-	// header size: content type (1 byte) + legacy protocol version (2 byte) +
-	//   + content length (2 byte) + message type (1 byte) +
-	//   + handshake length (3 byte)
+	// header size: content type (1 byte) + legacy protocol version (2 bytes) +
+	//   + content length (2 bytes) + message type (1 byte) +
+	//   + handshake length (3 bytes)
 	const headersSize = 9
 
-	// minimal data size: server version (2 byte) + random (32 byte) +
-	//	 + session ID (>=1 byte) + cipher suite (2 byte) +
+	// minimal data size: server version (2 bytes) + random (32 bytes) +
+	//	 + session ID (>=1 byte) + cipher suite (2 bytes) +
 	//	 + compression method (1 byte) + no extensions
 	const minDataSize = 38
 
@@ -217,10 +217,10 @@ func (s *tlsStream) parseServerHelloData() utils.LSMAction {
 	}
 }
 
-func (s *tlsStream) Close(limited bool) *analyzer.PropUpdate {
+func (s *tlsStream) Close(limited bool) (*analyzer.PropUpdate, error) {
 	s.reqBuf.Reset()
 	s.respBuf.Reset()
 	s.reqMap = nil
 	s.respMap = nil
-	return nil
+	return nil, nil
 }

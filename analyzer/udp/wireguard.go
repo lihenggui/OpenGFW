@@ -62,11 +62,14 @@ func newWireGuardUDPStream(logger analyzer.Logger) *wireGuardUDPStream {
 	}
 }
 
-func (s *wireGuardUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate, done bool) {
+func (s *wireGuardUDPStream) Feed(rev bool, data []byte) (*analyzer.FeedResult, error) {
 	m := s.parseWireGuardPacket(rev, data)
 	if m == nil {
 		s.invalidCount++
-		return nil, s.invalidCount >= wireguardUDPInvalidCountThreshold
+		return &analyzer.FeedResult{
+			Update: nil,
+			Done:   s.invalidCount >= wireguardUDPInvalidCountThreshold,
+		}, nil
 	}
 	s.invalidCount = 0 // Reset invalid count on valid WireGuard packet
 	messageType := m[wireguardPropKeyMessageType].(byte)
@@ -74,14 +77,17 @@ func (s *wireGuardUDPStream) Feed(rev bool, data []byte) (u *analyzer.PropUpdate
 	if messageType == wireguardTypeHandshakeInitiation {
 		propUpdateType = analyzer.PropUpdateReplace
 	}
-	return &analyzer.PropUpdate{
-		Type: propUpdateType,
-		M:    m,
-	}, false
+	return &analyzer.FeedResult{
+		Update: &analyzer.PropUpdate{
+			Type: propUpdateType,
+			M:    m,
+		},
+		Done: false,
+	}, nil
 }
 
-func (s *wireGuardUDPStream) Close(limited bool) *analyzer.PropUpdate {
-	return nil
+func (s *wireGuardUDPStream) Close(limited bool) (*analyzer.PropUpdate, error) {
+	return nil, nil
 }
 
 func (s *wireGuardUDPStream) parseWireGuardPacket(rev bool, data []byte) analyzer.PropMap {

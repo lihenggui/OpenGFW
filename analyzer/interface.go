@@ -42,15 +42,20 @@ type TCPInfo struct {
 	DstPort uint16
 }
 
+type FeedResult struct {
+	Update *PropUpdate
+	Done   bool
+}
+
 type TCPStream interface {
 	// Feed feeds a chunk of reassembled data to the stream.
-	// It returns a prop update containing the information extracted from the stream (can be nil),
+	// It returns a FeedResult containing the information extracted from the stream (can be nil),
 	// and whether the analyzer is "done" with this stream (i.e. no more data should be fed).
-	Feed(rev, start, end bool, skip int, data []byte) (u *PropUpdate, done bool)
+	Feed(rev, start, end bool, skip int, data []byte) (*FeedResult, error)
 	// Close indicates that the stream is closed.
 	// Either the connection is closed, or the stream has reached its byte limit.
 	// Like Feed, it optionally returns a prop update.
-	Close(limited bool) *PropUpdate
+	Close(limited bool) (*PropUpdate, error)
 }
 
 type UDPAnalyzer interface {
@@ -72,13 +77,13 @@ type UDPInfo struct {
 
 type UDPStream interface {
 	// Feed feeds a new packet to the stream.
-	// It returns a prop update containing the information extracted from the stream (can be nil),
+	// It returns a FeedResult containing the information extracted from the stream (can be nil),
 	// and whether the analyzer is "done" with this stream (i.e. no more data should be fed).
-	Feed(rev bool, data []byte) (u *PropUpdate, done bool)
+	Feed(rev bool, data []byte) (*FeedResult, error)
 	// Close indicates that the stream is closed.
 	// Either the connection is closed, or the stream has reached its byte limit.
 	// Like Feed, it optionally returns a prop update.
-	Close(limited bool) *PropUpdate
+	Close(limited bool) (*PropUpdate, error)
 }
 
 type (
